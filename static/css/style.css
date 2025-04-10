@@ -1,0 +1,16 @@
+#ai-assist {
+  position: relative;
+}
+
+input.auto-filled,
+textarea.auto-filled {
+  border: 2px solid #4caf50;
+  background-color: #f0fff4; 
+  transition: background-color 0.4s ease, border 0.4s ease;
+}
+
+input.auto-filled::placeholder,
+textarea.auto-filled::placeholder {
+  color: #2e7d32; 
+  font-style: italic;
+}
