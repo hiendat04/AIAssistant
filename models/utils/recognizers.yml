@@ -3,7 +3,7 @@ recognizers:
     supported_language: "en"
     patterns:
       - name: "phone_pattern"
-        regex: "\\b(?:\\+84|0084|0)\\s?(3[2-9]|5[6|8|9]|7[06-9]|8[1-5]|9[0-9])\\s?\\d{3}\\s?\\d{4}\\b"
+        regex: "\\b0\\d{3}\\s\\d{2}\\s\\d{2}\\s\\d{2}\\b"
         score: 0.85
     context:
       - phone
@@ -13,8 +13,9 @@ recognizers:
     supported_language: "en"
     patterns:
       - name: "id_pattern"
-        regex: "\\b0\\d{2}\\s?\\d{3}\\s?\\d{3}\\s?\\d{3}\\b"
+        regex: "\\b\\d{3}\\s?\\d{3}\\s?\\d{3}\\s?\\d{3}\\b"
         score: 0.85
     context:
-      - id
+      - ID
+      - Citizenship
     supported_entity: "VN_ID"

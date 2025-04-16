@@ -1,97 +1,64 @@
 window.addEventListener("DOMContentLoaded", () => {
-  // Get button
   const recordingButton = document.getElementById("record-button");
   const recordingIcon = recordingButton.querySelector("i");
   const recordingStatus = document.getElementById("record-status");
-  const transcriptionResult = document.getElementById("transcription");
 
-  // Get input fields
   const firstNameInput = document.querySelector("#first-name");
   const lastNameInput = document.querySelector("#last-name");
   const usernameInput = document.querySelector("#username");
   const emailInput = document.querySelector("#email");
-  const passwordInputInput = document.querySelector("#password");
+  const passwordInput = document.querySelector("#password");
   const birthdayInput = document.querySelector("#birthday");
   const phoneInput = document.querySelector("#phone");
   const citizenshipInput = document.querySelector("#citizenship");
   const addressInput = document.querySelector("#address");
+  const addressParts = {
+    street: "",
+    district: "",
+    ward: "",
+    city: "",
+    province: "",
+  };
+  let addressEntities = [];
 
   let isRecording = false;
-  let fullText = "";
+  let mediaRecorder;
+  let audioChunks = [];
 
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-  if (typeof SpeechRecognition !== "undefined") {
-    const recognition = new SpeechRecognition();
-    recognition.lang = "vi-VN";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    // Continuous record
-    const onResult = (event) => {
-      for (const result of event.results) {
-        if (result.isFinal) {
-          fullText += result[0].transcript + " ";
-        }
-      }
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) audioChunks.push(event.data);
     };
 
-    const onClick = () => {
-      isRecording = !isRecording;
-      if (isRecording) {
-        fullText = "";
-        recognition.start();
-        recordingIcon.classList.remove("bi-play");
-        recordingIcon.classList.add("bi-stop-circle");
-        recordingStatus.textContent = "🎙️ Đang ghi âm...";
-      } else {
-        recognition.stop();
-        recordingIcon.classList.remove("bi-stop-circle");
-        recordingIcon.classList.add("bi-play");
-        recordingStatus.textContent = "✅ Ghi âm xong! Đang xử lý thông tin...";
-      }
-    };
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "user_recording.wav");
 
-    recognition.addEventListener("result", onResult);
+      recordingStatus.textContent = "✅ Ghi âm xong! Đang xử lý dữ liệu...";
 
-    recognition.addEventListener("error", (e) => {
-      transcriptionResult.textContent = "❌ Lỗi ghi âm: " + e.error;
-      recordingStatus.textContent = "Có lỗi xảy ra";
-      recordingIcon.classList.remove("bi-stop-circle");
-      recordingIcon.classList.add("bi-play");
-      isRecording = false;
-    });
-
-    recognition.addEventListener("end", async () => {
-      if (isRecording) recognition.start(); // restart for continuous listening
-      else {
-        console.log(`Transcription: ${fullText}`);
-
-        // Send transcription to back-end for analysis
+      try {
         const response = await fetch(
           "http://localhost:5000/api/analyze-speech",
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ transcription: fullText }),
+            body: formData,
           }
         );
 
-        // Receive data from back-end
         const data = await response.json();
-        console.log(data);
-        console.log(JSON.stringify(data));
+        console.log("Response:", data);
 
-        // Auto fill
-        await data.forEach((e) => {
+        data.forEach((e) => {
           switch (e.entity) {
             case "PERSON":
               const nameArr = e.info.trim().split(" ");
               const firstName = nameArr[nameArr.length - 1];
-              const lastName = nameArr[0];
+              const lastName = nameArr.slice(0, nameArr.length - 1).join(" ");
               firstNameInput.value = firstName;
               lastNameInput.value = lastName;
               firstNameInput.classList.add("auto-filled");
@@ -102,67 +69,120 @@ window.addEventListener("DOMContentLoaded", () => {
               emailInput.value = e.info;
               emailInput.classList.add("auto-filled");
               break;
+
             case "DATE_TIME":
-              if (isValidDateString(e.info)) {
-                birthdayInput.value = formatDateForInput(e.info);
-                birthdayInput.classList.add("auto-filled");
-              }
+              birthdayInput.value = formatDateForInput(e.info);
+              birthdayInput.classList.add("auto-filled");
               break;
+
             case "VN_PHONE":
               phoneInput.value = e.info;
               phoneInput.classList.add("auto-filled");
               break;
+
             case "VN_ID":
               citizenshipInput.value = e.info;
               citizenshipInput.classList.add("auto-filled");
               break;
+
+            case "LOCATION":
+              addressEntities.push(e.info);
+              break;
           }
         });
 
+        if (addressEntities.length != 0) {
+          addressEntities.forEach((info) => {
+            if (info.includes("Thành Phố")) {
+              addressParts.city = info;
+            } else if (info.includes("Tỉnh")) {
+              addressParts.province = info;
+            } else if (info.includes("Quận") || info.includes("Huyện")) {
+              addressParts.district = info;
+            } else if (info.includes("Phường") || info.includes("Xã")) {
+              addressParts.ward = info;
+            } else {
+              addressParts.street = info;
+            }
+          });
+
+          const formattedAddress = [
+            addressParts.street,
+            addressParts.ward,
+            addressParts.district,
+            addressParts.city,
+            addressParts.province,
+          ]
+            .filter((part) => part) // Remove empty info
+            .join(", ");
+
+          addressInput.value = formattedAddress;
+          addressInput.classList.add("auto-filled");
+        }
+
         recordingStatus.textContent =
-          "✅Tự động điền thành công. Vui lòng kiểm tra lại thông tin!";
+          "✅ Tự động điền thành công. Vui lòng kiểm tra lại thông tin!";
+      } catch (err) {
+        console.error("Lỗi phân tích giọng nói:", err);
+        recordingStatus.textContent = "❌ Lỗi khi gửi audio đến server.";
       }
-    });
+    };
 
-    // Init icon
-    recordingIcon.classList.add("bi", "bi-play");
-    recordingButton.addEventListener("click", onClick);
-  } else {
-    // Fallback for unsupported browsers
-    recordingButton.remove();
-  }
+    mediaRecorder.start();
+    recordingStatus.textContent = "🎙️ Đang ghi âm...";
+    recordingIcon.classList.remove("bi-play");
+    recordingIcon.classList.add("bi-stop-circle");
+    isRecording = true;
+  };
 
-  // Format date
-  function formatDateForInput(rawDate) {
-    let dateObj;
+  const stopRecording = () => {
+    mediaRecorder.stop();
+    recordingIcon.classList.remove("bi-stop-circle");
+    recordingIcon.classList.add("bi-play");
+    isRecording = false;
+  };
 
-    if (isNaN(Date.parse(rawDate))) {
-      
-      // Handle if date is mm/dd/yyyy format
-      const parts = rawDate.split("/");
-      if (parts.length === 3) {
-        const [day, month, year] = parts;
-        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-      }
-      return "";
+  recordingButton.addEventListener("click", () => {
+    if (isRecording) {
+      stopRecording();
     } else {
-      // Parse bằng cách trích thủ công các phần tử
+      startRecording();
+    }
+  });
+
+  recordingIcon.classList.add("bi", "bi-play");
+
+  // Format date helpers
+  function formatDateForInput(rawDate) {
+    // Check if rawDate is a Vietnamese date string like: "ngày 4 tháng 4 năm 2003"
+    const vietnameseDateRegex =
+      /(?:(?:ngày)?\s*(\d{1,2})\s*tháng\s*(\d{1,2})\s*năm\s*(\d{4}))/i;
+
+    const match = rawDate.match(vietnameseDateRegex);
+    if (match) {
+      const [, day, month, year] = match;
+      const formattedDay = day.padStart(2, "0");
+      const formattedMonth = month.padStart(2, "0");
+      return `${year}-${formattedMonth}-${formattedDay}`; // Format: YYYY-MM-DD
+    }
+
+    // If it's a recognizable date like "4/4/2003"
+    if (!isNaN(Date.parse(rawDate))) {
       const parsed = new Date(rawDate);
       const year = parsed.getFullYear();
       const month = String(parsed.getMonth() + 1).padStart(2, "0");
       const day = String(parsed.getDate()).padStart(2, "0");
-
       return `${year}-${month}-${day}`;
     }
-  }
 
-  function isValidDateString(dateStr) {
-    const parsedDate = new Date(dateStr);
-    return (
-      (!isNaN(parsedDate.getTime()) &&
-        /^\d{1,2}[\/\-\s]\d{1,2}[\/\-\s]\d{4}$/.test(dateStr)) ||
-      isNaN(Number(dateStr))
-    );
+    // If it's in DD/MM/YYYY format
+    const parts = rawDate.split("/");
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    // If nothing matched
+    return "";
   }
-  
 });
