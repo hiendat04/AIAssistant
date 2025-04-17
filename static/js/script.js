@@ -95,7 +95,7 @@ window.addEventListener("DOMContentLoaded", () => {
           addressEntities.forEach((info) => {
             if (info.includes("Thành Phố")) {
               addressParts.city = info;
-            } else if (info.includes("Tỉnh")) {
+            } else if (info.includes("Tỉnh")) {
               addressParts.province = info;
             } else if (info.includes("Quận") || info.includes("Huyện")) {
               addressParts.district = info;
@@ -105,6 +105,8 @@ window.addEventListener("DOMContentLoaded", () => {
               addressParts.street = info;
             }
           });
+
+          console.log(addressParts);
 
           const formattedAddress = [
             addressParts.street,
@@ -130,8 +132,32 @@ window.addEventListener("DOMContentLoaded", () => {
 
     mediaRecorder.start();
     recordingStatus.textContent = "🎙️ Đang ghi âm...";
+
+    // Change button icon
     recordingIcon.classList.remove("bi-play");
     recordingIcon.classList.add("bi-stop-circle");
+
+    // Reset information in all field.
+    firstNameInput.classList?.remove("auto-filled");
+    lastNameInput.classList?.remove("auto-filled");
+    usernameInput.classList?.remove("auto-filled");
+    emailInput.classList?.remove("auto-filled");
+    passwordInput.classList?.remove("auto-filled");
+    birthdayInput.classList?.remove("auto-filled");
+    phoneInput.classList?.remove("auto-filled");
+    citizenshipInput.classList?.remove("auto-filled");
+    addressInput.classList?.remove("auto-filled");
+
+    firstNameInput.value = "";
+    lastNameInput.value = "";
+    usernameInput.value = "";
+    emailInput.value = "";
+    passwordInput.value = "";
+    birthdayInput.value = "";
+    phoneInput.value = "";
+    citizenshipInput.value = "";
+    addressInput.value = "";
+
     isRecording = true;
   };
 
