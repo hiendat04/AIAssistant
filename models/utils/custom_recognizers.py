@@ -11,6 +11,7 @@ class VietnameseDateRecognizer(PatternRecognizer):
     - 04-04-2003 or 4-4-2003
     - 4 tháng 4 năm 2003
     - ngày 4 tháng 4 năm 2003
+
     """
 
     PATTERNS = [
@@ -25,7 +26,7 @@ class VietnameseDateRecognizer(PatternRecognizer):
             0.6
         ),
         Pattern(
-            "Ngày X tháng Y năm Z",
+            "ngày X tháng Y năm Z",
             r"(ngày\s*)?([1-9]|0[1-9]|[1-2][0-9]|3[0-1])\s*tháng\s*([1-9]|0[1-9]|1[0-2])\s*năm\s*\d{4}",
             0.7
         ),

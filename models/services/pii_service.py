@@ -5,11 +5,12 @@ from models.utils.custom_recognizers import VietnameseDateRecognizer
 
 def extract_pii(text):
     # Define which transformers model to use
-    model_config = [{"lang_code": "en", "model_name": {
-        # Use a transformer-compatible spaCy model
-        "spacy": "en_core_web_lg",
-        "transformers": "NlpHUST/ner-vietnamese-electra-base"
-    }
+    model_config = [{
+        "lang_code": "en", "model_name": {
+            # Use a transformer-compatible spaCy model
+            "spacy": "en_core_web_lg",
+            "transformers": "NlpHUST/ner-vietnamese-electra-base"
+        }
     }]
 
     nlp_engine = TransformersNlpEngine(models=model_config)

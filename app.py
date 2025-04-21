@@ -3,12 +3,14 @@ from flask_cors import CORS
 from models.services.pii_service import extract_pii
 from werkzeug.utils import secure_filename
 import os
-import whisper
+from faster_whisper import WhisperModel
 
 app = Flask(__name__)
 CORS(app)
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+model = WhisperModel("turbo", compute_type="int8")
 
 
 @app.route('/')
@@ -26,15 +28,22 @@ def analyze_speech():
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     audio.save(save_path)
 
-    #  Transcribe audio whis whisper
-    model = whisper.load_model("turbo")
-    result = model.transcribe(save_path)
-    transcription = result['text'].title()
-    print(f'Transcription: {transcription}')
+    try:
+        segments, _ = model.transcribe(save_path)
+        segments = list(segments)
 
-    # Extract PII information
-    pii = extract_pii(transcription)
-    return jsonify(pii), 200
+        transcription = " ".join([
+            segment.text for segment in segments
+        ]).strip().title()
+
+        print(f'Transcription: {transcription}')
+
+        # Extract PII information
+        pii = extract_pii(transcription)
+        return jsonify(pii), 200
+    finally:
+        if os.path.exists(save_path):
+            os.remove(save_path)
 
 
 if __name__ == '__main__':
